@@ -130,7 +130,7 @@ export class Map {
         const ix = Math.floor(x);
         const iy = Math.floor(y);
         if (iy >= 0 && iy < this.height && ix >= 0 && ix < this.width) {
-            return this.heightGrid[iy][ix] || 0;
+            return (this.heightGrid && this.heightGrid[iy] && this.heightGrid[iy][ix]) || 0;
         }
         return 0;
     }

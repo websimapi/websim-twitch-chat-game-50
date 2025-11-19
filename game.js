@@ -73,6 +73,17 @@ export class Game {
         if (gameState.map && gameState.map.grid && gameState.map.grid.length > 0) {
             this.map.grid = gameState.map.grid;
             this.map.treeRespawns = gameState.map.treeRespawns || [];
+            
+            // Ensure dimensions are correct based on loaded grid
+            this.map.height = this.map.grid.length;
+            this.map.width = this.map.grid[0].length;
+
+            if (gameState.map.heightGrid && gameState.map.heightGrid.length > 0) {
+                this.map.heightGrid = gameState.map.heightGrid;
+            } else {
+                // Default height grid for legacy saves
+                this.map.heightGrid = Array(this.map.height).fill(0).map(() => Array(this.map.width).fill(0));
+            }
         } else {
             this.map.generateMap();
         }
