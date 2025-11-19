@@ -165,19 +165,26 @@ function renderYSorted(ctx, players, map, drawStartX, drawEndX, drawStartY, draw
                 if (tileType === TILE_TYPE.LOGS) { typeStr = 'logs'; img = map.logsTile; }
                 else if (tileType === TILE_TYPE.BUSHES) { typeStr = 'bushes'; img = map.bushesTile; }
 
-                // Base depth from tile position
-                const baseDepth = getSortDepth(i, j, 0, viewMode);
+                const z = map.getHeight(i, j);
+                const entity = {
+                    x: i,
+                    y: j,
+                    z: z,
+                    image: img
+                };
+
                 let depthOffset = 0.5; // default for tall trees
 
                 // Ground items like logs and bushes should be behind players on the same tile
-                // But wait, if players are at Z, and logs are at Z...
-                // The getTallObjects now returns Z.
+                if (typeStr === 'logs' || typeStr === 'bushes') {
+                     depthOffset = 0.0; 
+                }
                 
                 renderList.push({
                     type: typeStr,
                     // Sort using the object's Z
-                    depth: getSortDepth(i, j, item.z, viewMode) + depthOffset,
-                    entity: item
+                    depth: getSortDepth(i, j, z, viewMode) + depthOffset,
+                    entity: entity
                 });
             }
         }
