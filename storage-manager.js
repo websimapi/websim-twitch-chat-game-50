@@ -75,6 +75,7 @@ export async function saveGameState(channel, worldName, players, map, assets, ge
     }
     const mapState = {
         grid: map.grid,
+        heightGrid: map.heightGrid, // Ensure heightGrid is saved
         treeRespawns: map.treeRespawns,
     };
 

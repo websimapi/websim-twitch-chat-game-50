@@ -93,68 +93,28 @@ export class MapRenderer {
                     ctx.restore();
 
                     // Draw Cliffs (Side Faces)
-                    if (dirt && dirt.complete && h > 0) {
+                    if (h > 0) {
+                        const dirtTexture = dirt && dirt.complete ? dirt : null;
+                        let fillStyleSouth = '#5d4037'; // Fallback Dark Brown
+                        let fillStyleEast = '#4e342e'; // Fallback
+                        
+                        if (dirtTexture) {
+                            // Create a pattern for the dirt
+                            const pattern = ctx.createPattern(dirtTexture, 'repeat');
+                            // We can adjust pattern transform if needed, but default usually works for vertical walls
+                            fillStyleSouth = pattern;
+                            fillStyleEast = pattern;
+                        }
+
                         // Check South neighbor (j+1)
                         const southH = (j + 1 < this.map.height) ? this.map.getHeight(i, j + 1) : -999;
                         if (h > southH) {
-                            const drop = h - Math.max(0, southH); // Draw down to neighbor or 0
-                            // South Face geometry in screen space
-                            // Top edge is the bottom-left and bottom-right of the Top Face.
-                            // Iso Top Face corners (relative to pos):
-                            // Top: (0, -ts*0.5) ? No, 0,0 is top-left of image pre-transform.
-                            // Transformed (0,0) -> (0,0). (ts,0) -> (0.5ts, 0.25ts). (0,ts) -> (-0.5ts, 0.25ts). (ts,ts) -> (0, 0.5ts).
-                            // So Bottom Corner is (0, 0.5ts). Left is (-0.5ts, 0.25ts). Right is (0.5ts, 0.25ts).
+                            const heightPx = (h - Math.max(0, southH)) * ts * 0.5;
                             
-                            // South face connects Left-Bottom-Right.
-                            // Actually, South face corresponds to the Y-axis side?
-                            // In our projection, x-axis is right-down, y-axis is left-down?
-                            // project: x_scr = (x-y), y_scr = (x+y).
-                            // x+ goes Right-Down. y+ goes Left-Down? No.
-                            // x=1, y=0 -> 0.5, 0.25 (Right Down)
-                            // x=0, y=1 -> -0.5, 0.25 (Left Down)
-                            // So y+ direction is "Left-Down" visually.
-                            
-                            // South (j+1) is Left-Down.
-                            // So the face exposed by a lower South neighbor is the "South-East" face? 
-                            // No, it's the face along the x-axis edge.
-                            // Let's just draw vertical rectangles dropped down from the edge.
-                            
-                            // Left Edge: (-0.5ts, 0.25ts) to (0, 0.5ts).
-                            // Right Edge: (0, 0.5ts) to (0.5ts, 0.25ts).
-                            
-                            // The face facing "South" (j increasing) is the one defined by the x-axis (i varying)?
-                            // It's the face from (0, ts) to (ts, ts) in texture coords.
-                            // In screen coords: (-0.5ts, 0.25ts) to (0, 0.5ts).
-                            
-                            // We need to draw dirt extending downwards by Z units.
-                            // Z units in screen space: z * ts * 0.5.
-                            
-                            // Draw a transformed rectangle for the side?
-                            // Or simply: Draw the dirt tile, darker, skewed, and stretched vertically?
-                            // Simple blocky look: Just draw vertical strips.
-                            
-                            // Let's try simpler:
-                            // Draw the South Face
-                            const heightPx = (h - southH) * ts * 0.5;
-                            // Vertices:
-                            // TL: (-0.5ts, 0.25ts)
-                            // TR: (0, 0.5ts)
-                            // BL: (-0.5ts, 0.25ts + heightPx)
-                            // BR: (0, 0.5ts + heightPx)
-                            
-                            // We can use a transform to draw the texture here.
-                            // Shear Y?
                             ctx.save();
                             ctx.translate(pos.x, pos.y);
-                            // We want to map (0,0)-(ts,ts) image to the parallelogram.
-                            // Transform:
-                            // (0,0) -> (-0.5ts, 0.25ts)
-                            // (ts,0) -> (0, 0.5ts)
-                            // (0,heightPx) -> ... vertical
                             
-                            // This is getting complex for canvas 2d. 
-                            // Alternative: Draw a solid color polygon.
-                            ctx.fillStyle = '#5d4037'; // Dark Brown
+                            ctx.fillStyle = fillStyleSouth;
                             ctx.beginPath();
                             ctx.moveTo(-0.5*ts, 0.25*ts);
                             ctx.lineTo(0, 0.5*ts);
@@ -162,7 +122,9 @@ export class MapRenderer {
                             ctx.lineTo(-0.5*ts, 0.25*ts + heightPx);
                             ctx.closePath();
                             ctx.fill();
-                            ctx.strokeStyle = '#3e2723';
+                            
+                            // Add a border/shadow line for definition
+                            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
                             ctx.stroke();
                             ctx.restore();
                         }
@@ -170,12 +132,14 @@ export class MapRenderer {
                         // Check East neighbor (i+1)
                         const eastH = (i + 1 < this.map.width) ? this.map.getHeight(i + 1, j) : -999;
                         if (h > eastH) {
-                            const heightPx = (h - eastH) * ts * 0.5;
-                            // East face (facing x+)
-                            // From (0, 0.5ts) to (0.5ts, 0.25ts)
+                            const heightPx = (h - Math.max(0, eastH)) * ts * 0.5;
+                            
                             ctx.save();
                             ctx.translate(pos.x, pos.y);
-                            ctx.fillStyle = '#4e342e'; // Slightly different brown for shading
+                            
+                            // Darken the east face slightly if using texture
+                            ctx.fillStyle = fillStyleEast;
+                            
                             ctx.beginPath();
                             ctx.moveTo(0, 0.5*ts);
                             ctx.lineTo(0.5*ts, 0.25*ts);
@@ -183,7 +147,14 @@ export class MapRenderer {
                             ctx.lineTo(0, 0.5*ts + heightPx);
                             ctx.closePath();
                             ctx.fill();
-                            ctx.strokeStyle = '#3e2723';
+
+                            if (dirtTexture) {
+                                // Overlay a semi-transparent black to shade the east side
+                                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                                ctx.fill();
+                            }
+                            
+                            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
                             ctx.stroke();
                             ctx.restore();
                         }

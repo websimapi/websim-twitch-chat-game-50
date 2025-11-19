@@ -15,6 +15,9 @@ export async function regenerateMapFeature(channel, worldName, feature, settings
     const tempMap = new Map(32); // tileSize is arbitrary here
     if (worldState.map && worldState.map.grid && worldState.map.grid.length > 0) {
         tempMap.grid = worldState.map.grid;
+        // Sync dimensions to the loaded grid
+        tempMap.height = tempMap.grid.length;
+        tempMap.width = tempMap.grid[0].length;
     } else {
         // If map is empty, create a base grass grid
         tempMap.grid = Array(tempMap.height).fill(0).map(() => Array(tempMap.width).fill(TILE_TYPE.GRASS));
@@ -23,6 +26,10 @@ export async function regenerateMapFeature(channel, worldName, feature, settings
     // Load existing height grid if available, or init new one
     if (worldState.map && worldState.map.heightGrid && worldState.map.heightGrid.length > 0) {
         tempMap.heightGrid = worldState.map.heightGrid;
+        // Ensure heightGrid matches dimensions if resizing happened (basic check)
+        while (tempMap.heightGrid.length < tempMap.height) {
+             tempMap.heightGrid.push(Array(tempMap.width).fill(0));
+        }
     } else {
         tempMap.heightGrid = Array(tempMap.height).fill(0).map(() => Array(tempMap.width).fill(0));
     }
