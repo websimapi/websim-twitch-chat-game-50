@@ -62,44 +62,27 @@ export class MapRenderer {
                 const pos = project(i, j, h, viewMode, ts);
                 
                 if (viewMode === '2.5d') {
-                    // --- Render as a heightmapped quad using the grass tile texture ---
+                    // --- Render each grid cell with its own grass tile sprite in 2.5D ---
 
-                    // Create a cached pattern from the grass tile for 2.5D if not already created
-                    if (!this.grassPattern2_5d) {
-                        this.grassPattern2_5d = ctx.createPattern(this.map.grassTile, 'repeat');
-                    }
+                    // Center of this tile in projected space
+                    const centerPos = project(i + 0.5, j + 0.5, h, viewMode, ts);
 
-                    // Heights at the four grid corners of this cell
-                    const h00 = this.map.getHeight(i,     j);
-                    const h10 = this.map.getHeight(i + 1, j);
-                    const h11 = this.map.getHeight(i + 1, j + 1);
-                    const h01 = this.map.getHeight(i,     j + 1);
+                    // Size the grass sprite to fit nicely inside the isometric diamond
+                    const spriteWidth = ts;
+                    const spriteHeight = ts * 0.55; // slightly squashed for isometric feel
 
-                    // Project the four corners
-                    const p00 = project(i,     j,     h00, viewMode, ts);
-                    const p10 = project(i + 1, j,     h10, viewMode, ts);
-                    const p11 = project(i + 1, j + 1, h11, viewMode, ts);
-                    const p01 = project(i,     j + 1, h01, viewMode, ts);
+                    const drawX = centerPos.x - spriteWidth / 2;
+                    const drawY = centerPos.y - spriteHeight * 0.5;
 
-                    // Use the grass tile as a repeating pattern for the sloped ground
-                    ctx.fillStyle = this.grassPattern2_5d;
-
-                    ctx.beginPath();
-                    ctx.moveTo(p00.x, p00.y);
-                    ctx.lineTo(p10.x, p10.y);
-                    ctx.lineTo(p11.x, p11.y);
-                    ctx.lineTo(p01.x, p01.y);
-                    ctx.closePath();
-                    ctx.fill();
+                    ctx.drawImage(this.map.grassTile, drawX, drawY, spriteWidth, spriteHeight);
 
                     // Overlay flowers on top of the sloped ground
                     const tileType = this.map.grid[j][i];
                     if (tileType === TILE_TYPE.FLOWER_PATCH && this.map.flowerPatchTile && this.map.flowerPatchTile.complete) {
-                        const centerPos = project(i + 0.5, j + 0.5, h, viewMode, ts);
-                        const spriteSize = ts * 0.75;
-                        const drawX = centerPos.x - spriteSize / 2;
-                        const drawY = centerPos.y - spriteSize / 2;
-                        ctx.drawImage(this.map.flowerPatchTile, drawX, drawY, spriteSize, spriteSize);
+                        const flowerSize = ts * 0.5;
+                        const flowerX = centerPos.x - flowerSize / 2;
+                        const flowerY = centerPos.y - flowerSize * 0.75;
+                        ctx.drawImage(this.map.flowerPatchTile, flowerX, flowerY, flowerSize, flowerSize);
                     }
 
                 } else {
