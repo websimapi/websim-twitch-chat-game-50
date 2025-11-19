@@ -1,0 +1,85 @@
+import * as StorageManager from '../storage-manager.js';
+import { Map } from '../map.js';
+import { TILE_TYPE } from '../map-tile-types.js';
+import { createNoise2D } from 'https://esm.sh/simplex-noise';
+
+export async function regenerateMapFeature(channel, worldName, feature, settings = null) {
+    console.log(`Regenerating ${feature} for world ${worldName}...`);
+    const worldState = await StorageManager.loadGameState(channel, worldName);
+    if (!worldState) {
+        alert(`Could not load world data for ${worldName}.`);
+        return;
+    }
+
+    // Use a temporary Map instance to run the logic
+    const tempMap = new Map(32); // tileSize is arbitrary here
+    if (worldState.map && worldState.map.grid && worldState.map.grid.length > 0) {
+        tempMap.grid = worldState.map.grid;
+    } else {
+        // If map is empty, create a base grass grid
+        tempMap.grid = Array(tempMap.height).fill(0).map(() => Array(tempMap.width).fill(TILE_TYPE.GRASS));
+    }
+    
+    // Load existing height grid if available, or init new one
+    if (worldState.map && worldState.map.heightGrid && worldState.map.heightGrid.length > 0) {
+        tempMap.heightGrid = worldState.map.heightGrid;
+    } else {
+        tempMap.heightGrid = Array(tempMap.height).fill(0).map(() => Array(tempMap.width).fill(0));
+    }
+
+    if (feature === 'trees') {
+        tempMap.regenerateTrees();
+    } else if (feature === 'flowers') {
+        tempMap.regenerateFlowers();
+    } else if (feature === 'terrain') {
+        generateTerrain(tempMap, settings || { scale: 20, height_multiplier: 0, seed: Math.random() });
+    }
+
+    // Save the updated map back
+    worldState.map.grid = tempMap.grid;
+    worldState.map.heightGrid = tempMap.heightGrid;
+    
+    // We need to pass a Map-like object to saveGameState, not the full Player instances
+    const dummyPlayers = new window.Map(); // Use window.Map to avoid conflict with the Map class from this module
+    for (const id in worldState.players) {
+        dummyPlayers.set(id, { getState: () => worldState.players[id] });
+    }
+    const dummyMap = { 
+        grid: tempMap.grid, 
+        heightGrid: tempMap.heightGrid,
+        treeRespawns: worldState.map.treeRespawns || [] 
+    };
+
+    await StorageManager.saveGameState(channel, worldName, dummyPlayers, dummyMap, worldState.assets || {}, worldState.assetsGenerated || []);
+
+    if (feature !== 'terrain') { // Terrain might be part of a larger reset, don't alert if silent
+        alert(`${feature.charAt(0).toUpperCase() + feature.slice(1)} have been regenerated for "${worldName}"! The changes will be visible the next time you load the world.`);
+    }
+}
+
+export function generateTerrain(map, settings) {
+    console.log("Generating terrain with settings:", settings);
+    const seed = settings.seed || Math.random();
+    const noise2D = createNoise2D(() => {
+        // Simple seeded random. Not perfect but sufficient.
+        const x = Math.sin(seed++) * 10000;
+        return x - Math.floor(x);
+    });
+
+    const scale = Math.max(1, settings.scale);
+    const heightMult = settings.height_multiplier;
+
+    for (let y = 0; y < map.height; y++) {
+        for (let x = 0; x < map.width; x++) {
+            const value = noise2D(x / scale, y / scale);
+            // Normalize roughly to 0..1 (noise is -1..1)
+            const norm = (value + 1) / 2;
+            const height = Math.floor(norm * heightMult);
+            map.heightGrid[y][x] = Math.max(0, height);
+            
+            // Optional: Clean up trees on very steep slopes if we implemented slope logic,
+            // or just let them be.
+        }
+    }
+    console.log("Terrain generation complete.");
+}
