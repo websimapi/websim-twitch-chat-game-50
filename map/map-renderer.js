@@ -58,7 +58,7 @@ export class MapRenderer {
         ctx.translate(-cameraX, -cameraY);
 
         // Expand range slightly to cover tall blocks or projection overlap
-        const pad = 4;
+        const pad = 12; // Increased padding to account for taller terrain
         const safeStartX = Math.max(0, drawStartX - pad);
         const safeEndX = Math.min(this.map.width, drawEndX + pad);
         const safeStartY = Math.max(0, drawStartY - pad);

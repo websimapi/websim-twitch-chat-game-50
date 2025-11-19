@@ -40,11 +40,11 @@ export function getSettingsHTML(worldName, settings) {
                          <p class="setting-desc">Configure and regenerate the terrain topography. <strong>Warning: This modifies the map structure!</strong></p>
                          <div class="setting-item">
                             <label for="terrain-scale">Noise Scale (Zoom)</label>
-                            <input type="number" id="terrain-scale" data-path="terrain.scale" value="${settings.terrain ? settings.terrain.scale : 20}" step="1">
+                            <input type="number" id="terrain-scale" data-path="terrain.scale" value="${settings.terrain ? settings.terrain.scale : 30}" step="1">
                          </div>
                          <div class="setting-item">
                             <label for="terrain-height">Height Multiplier</label>
-                            <input type="number" id="terrain-height" data-path="terrain.height_multiplier" value="${settings.terrain ? settings.terrain.height_multiplier : 0}" step="1">
+                            <input type="number" id="terrain-height" data-path="terrain.height_multiplier" value="${settings.terrain ? settings.terrain.height_multiplier : 6}" step="1">
                          </div>
                          <div class="setting-item">
                             <label for="terrain-seed">Seed (Random if 0)</label>

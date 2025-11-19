@@ -76,17 +76,92 @@ export function generateTerrain(map, settings) {
     const scale = Math.max(1, settings.scale);
     const heightMult = settings.height_multiplier;
 
+    // 1. Generate base noise
     for (let y = 0; y < map.height; y++) {
         for (let x = 0; x < map.width; x++) {
-            const value = noise2D(x / scale, y / scale);
-            // Normalize roughly to 0..1 (noise is -1..1)
-            const norm = (value + 1) / 2;
-            const height = Math.floor(norm * heightMult);
-            map.heightGrid[y][x] = Math.max(0, height);
+            let value = noise2D(x / scale, y / scale);
             
-            // Optional: Clean up trees on very steep slopes if we implemented slope logic,
-            // or just let them be.
+            // Add some detail with higher frequency noise (octaves)
+            value += 0.5 * noise2D(2 * x / scale, 2 * y / scale);
+            value += 0.25 * noise2D(4 * x / scale, 4 * y / scale);
+            
+            // Normalize. Simplex range approx -1 to 1. Sum of octaves increases range.
+            // Max possible approx 1 + 0.5 + 0.25 = 1.75.
+            // Normalize to 0..1
+            const norm = (value + 1.75) / 3.5;
+            
+            // Apply power curve to flatten valleys and steepen peaks slightly (makes it look more like terrain)
+            const shaped = Math.pow(norm, 1.5);
+
+            const height = Math.floor(shaped * heightMult);
+            map.heightGrid[y][x] = Math.max(0, height);
         }
     }
-    console.log("Terrain generation complete.");
+
+    // 2. Enforce slopes (Slope Constraint) - Make map walkable
+    // Ensure difference between neighbors is at most 1
+    let changed = true;
+    let iterations = 0;
+    const MAX_ITERATIONS = 100; // Prevent infinite loops
+
+    while (changed && iterations < MAX_ITERATIONS) {
+        changed = false;
+        iterations++;
+
+        // Pass 1: Top-Left to Bottom-Right
+        for (let y = 0; y < map.height; y++) {
+            for (let x = 0; x < map.width; x++) {
+                const h = map.heightGrid[y][x];
+                let newH = h;
+                
+                const neighbors = [];
+                if (x > 0) neighbors.push(map.heightGrid[y][x-1]);
+                if (y > 0) neighbors.push(map.heightGrid[y-1][x]);
+                if (x < map.width - 1) neighbors.push(map.heightGrid[y][x+1]);
+                if (y < map.height - 1) neighbors.push(map.heightGrid[y+1][x]);
+
+                for (const nh of neighbors) {
+                    // If I am much higher than neighbor, lower me
+                    if (newH > nh + 1) {
+                        newH = nh + 1;
+                        changed = true;
+                    }
+                    // If I am much lower than neighbor, raise me (fill pits)
+                    if (newH < nh - 1) {
+                        newH = nh - 1;
+                        changed = true;
+                    }
+                }
+                map.heightGrid[y][x] = newH;
+            }
+        }
+
+        // Pass 2: Bottom-Right to Top-Left (helps propagation speed)
+        for (let y = map.height - 1; y >= 0; y--) {
+            for (let x = map.width - 1; x >= 0; x--) {
+                const h = map.heightGrid[y][x];
+                let newH = h;
+                
+                const neighbors = [];
+                if (x > 0) neighbors.push(map.heightGrid[y][x-1]);
+                if (y > 0) neighbors.push(map.heightGrid[y-1][x]);
+                if (x < map.width - 1) neighbors.push(map.heightGrid[y][x+1]);
+                if (y < map.height - 1) neighbors.push(map.heightGrid[y+1][x]);
+
+                for (const nh of neighbors) {
+                     if (newH > nh + 1) {
+                        newH = nh + 1;
+                        changed = true;
+                    }
+                    if (newH < nh - 1) {
+                        newH = nh - 1;
+                        changed = true;
+                    }
+                }
+                map.heightGrid[y][x] = newH;
+            }
+        }
+    }
+
+    console.log(`Terrain generation complete. Slope smoothing took ${iterations} iterations.`);
 }

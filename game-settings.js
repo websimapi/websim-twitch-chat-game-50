@@ -24,8 +24,8 @@ export const DEFAULT_GAME_SETTINGS = {
     },
     terrain: {
         seed: 12345,
-        scale: 20, // Lower is more zoomed in/larger features. Actually often noise(x/scale). 
-        height_multiplier: 0, // Default flat for now, user can increase
+        scale: 30, // Smoother noise
+        height_multiplier: 6, // Default to some height
         roughness: 0.5,
         water_level: -1, // Not using water yet, but good to have
     },
