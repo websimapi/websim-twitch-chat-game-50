@@ -119,6 +119,7 @@ export class Map {
             this.heightGrid[j] = [];
             for (let i = 0; i < this.width; i++) {
                 this.grid[j][i] = TILE_TYPE.GRASS;
+                // Initialize height to 0 as a float so terrain generation can fill with smooth values
                 this.heightGrid[j][i] = 0;
             }
         }
@@ -127,12 +128,36 @@ export class Map {
     }
     
     getHeight(x, y) {
-        const ix = Math.floor(x);
-        const iy = Math.floor(y);
-        if (iy >= 0 && iy < this.height && ix >= 0 && ix < this.width) {
-            return (this.heightGrid && this.heightGrid[iy] && this.heightGrid[iy][ix]) || 0;
-        }
-        return 0;
+        // Bilinear interpolation over heightGrid so we get smooth slopes
+        if (!this.heightGrid || this.heightGrid.length === 0) return 0;
+
+        const x0 = Math.floor(x);
+        const y0 = Math.floor(y);
+        const x1 = x0 + 1;
+        const y1 = y0 + 1;
+
+        // Clamp indices to valid range
+        const clampX = (v) => Math.max(0, Math.min(this.width - 1, v));
+        const clampY = (v) => Math.max(0, Math.min(this.height - 1, v));
+
+        const cx0 = clampX(x0);
+        const cx1 = clampX(x1);
+        const cy0 = clampY(y0);
+        const cy1 = clampY(y1);
+
+        const h00 = this.heightGrid[cy0] && this.heightGrid[cy0][cx0] != null ? this.heightGrid[cy0][cx0] : 0;
+        const h10 = this.heightGrid[cy0] && this.heightGrid[cy0][cx1] != null ? this.heightGrid[cy0][cx1] : h00;
+        const h01 = this.heightGrid[cy1] && this.heightGrid[cy1][cx0] != null ? this.heightGrid[cy1][cx0] : h00;
+        const h11 = this.heightGrid[cy1] && this.heightGrid[cy1][cx1] != null ? this.heightGrid[cy1][cx1] : h00;
+
+        const fx = Math.max(0, Math.min(1, x - x0));
+        const fy = Math.max(0, Math.min(1, y - y0));
+
+        const h0 = h00 + (h10 - h00) * fx;
+        const h1 = h01 + (h11 - h01) * fx;
+        const h = h0 + (h1 - h0) * fy;
+
+        return h || 0;
     }
 
     regenerateTrees() {
