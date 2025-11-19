@@ -61,34 +61,45 @@ export class MapRenderer {
                 const pos = project(i, j, h, viewMode, ts);
                 
                 if (viewMode === '2.5d') {
-                    // Draw only the top face using height for vertical offset.
-                    // Side walls/dirt cliffs are disabled for now so the height map reads as smooth slopes.
-                    ctx.save();
-                    ctx.translate(pos.x, pos.y);
-                    ctx.transform(0.5, 0.25, -0.5, 0.25, 0, 0);
-                    ctx.drawImage(this.map.grassTile, 0, 0, ts, ts);
-                    
+                    // --- New: render as a heightmapped quad instead of a flat, stepped tile ---
+
+                    // Heights at the four grid corners of this cell
+                    const h00 = this.map.getHeight(i,     j);
+                    const h10 = this.map.getHeight(i + 1, j);
+                    const h11 = this.map.getHeight(i + 1, j + 1);
+                    const h01 = this.map.getHeight(i,     j + 1);
+
+                    // Project the four corners
+                    const p00 = project(i,     j,     h00, viewMode, ts);
+                    const p10 = project(i + 1, j,     h10, viewMode, ts);
+                    const p11 = project(i + 1, j + 1, h11, viewMode, ts);
+                    const p01 = project(i,     j + 1, h01, viewMode, ts);
+
+                    // Average height for simple shading
+                    const avgH = (h00 + h10 + h11 + h01) * 0.25;
+
+                    // Base grass color with slight lightening by height
+                    const baseLight = 80;   // minimum lightness
+                    const extra = Math.max(0, Math.min(20, avgH * 4)); // clamp extra lightness
+                    const lightness = baseLight + extra;
+                    ctx.fillStyle = `hsl(110, 40%, ${lightness}%)`;
+
+                    ctx.beginPath();
+                    ctx.moveTo(p00.x, p00.y);
+                    ctx.lineTo(p10.x, p10.y);
+                    ctx.lineTo(p11.x, p11.y);
+                    ctx.lineTo(p01.x, p01.y);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // Overlay flowers on top of the sloped ground
                     const tileType = this.map.grid[j][i];
                     if (tileType === TILE_TYPE.FLOWER_PATCH && this.map.flowerPatchTile && this.map.flowerPatchTile.complete) {
-                        ctx.drawImage(this.map.flowerPatchTile, 0, 0, ts, ts);
-                    }
-                    ctx.restore();
-
-                    // Optional simple shading based on local slope to make slopes more readable
-                    const hRight = this.map.getHeight(i + 1.0, j + 0.5);
-                    const hDown = this.map.getHeight(i + 0.5, j + 1.0);
-                    const slopeX = hRight - h;
-                    const slopeY = hDown - h;
-                    const slopeMag = Math.min(1, Math.sqrt(slopeX * slopeX + slopeY * slopeY));
-
-                    if (slopeMag > 0.01) {
-                        ctx.save();
-                        ctx.translate(pos.x, pos.y);
-                        ctx.transform(0.5, 0.25, -0.5, 0.25, 0, 0);
-                        const shade = 0.15 + slopeMag * 0.35;
-                        ctx.fillStyle = `rgba(0, 0, 0, ${shade})`;
-                        ctx.fillRect(0, 0, ts, ts);
-                        ctx.restore();
+                        const centerPos = project(i + 0.5, j + 0.5, h, viewMode, ts);
+                        const spriteSize = ts * 0.75;
+                        const drawX = centerPos.x - spriteSize / 2;
+                        const drawY = centerPos.y - spriteSize / 2;
+                        ctx.drawImage(this.map.flowerPatchTile, drawX, drawY, spriteSize, spriteSize);
                     }
 
                 } else {
