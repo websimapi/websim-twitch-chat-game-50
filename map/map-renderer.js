@@ -5,6 +5,7 @@ import { project } from '../game/projection.js';
 export class MapRenderer {
     constructor(map) {
         this.map = map;
+        this.grassPattern2_5d = null;
     }
 
     getTallObjects(drawStartX, drawEndX, drawStartY, drawEndY) {
@@ -61,7 +62,12 @@ export class MapRenderer {
                 const pos = project(i, j, h, viewMode, ts);
                 
                 if (viewMode === '2.5d') {
-                    // --- New: render as a heightmapped quad instead of a flat, stepped tile ---
+                    // --- Render as a heightmapped quad using the grass tile texture ---
+
+                    // Create a cached pattern from the grass tile for 2.5D if not already created
+                    if (!this.grassPattern2_5d) {
+                        this.grassPattern2_5d = ctx.createPattern(this.map.grassTile, 'repeat');
+                    }
 
                     // Heights at the four grid corners of this cell
                     const h00 = this.map.getHeight(i,     j);
@@ -75,14 +81,8 @@ export class MapRenderer {
                     const p11 = project(i + 1, j + 1, h11, viewMode, ts);
                     const p01 = project(i,     j + 1, h01, viewMode, ts);
 
-                    // Average height for simple shading
-                    const avgH = (h00 + h10 + h11 + h01) * 0.25;
-
-                    // Base grass color with slight lightening by height
-                    const baseLight = 80;   // minimum lightness
-                    const extra = Math.max(0, Math.min(20, avgH * 4)); // clamp extra lightness
-                    const lightness = baseLight + extra;
-                    ctx.fillStyle = `hsl(110, 40%, ${lightness}%)`;
+                    // Use the grass tile as a repeating pattern for the sloped ground
+                    ctx.fillStyle = this.grassPattern2_5d;
 
                     ctx.beginPath();
                     ctx.moveTo(p00.x, p00.y);
