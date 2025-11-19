@@ -52,7 +52,7 @@ function getVisibleTileRange(camera, canvas, map, viewMode) {
     return { drawStartX, drawEndX, drawStartY, drawEndY };
 }
 
-function renderTargetHighlights(ctx, players, camera, tileSize, settings) {
+function renderTargetHighlights(ctx, players, camera, tileSize, settings, map) {
     if (!(settings.visuals && settings.visuals.show_target_indicator)) return;
     const viewMode = settings.visuals.view_mode || '2d';
 
@@ -86,8 +86,9 @@ function renderTargetHighlights(ctx, players, camera, tileSize, settings) {
             const targetY = player.actionTarget.y;
 
             if (viewMode === '2.5d') {
-                // Use the isometric center of the tile for correct 2.5D alignment
-                const centerPos = project(targetX + 0.5, targetY + 0.5, 0, viewMode, tileSize);
+                // Use the isometric center of the tile with the actual terrain height
+                const h = map ? map.getHeight(targetX + 0.5, targetY + 0.5) : 0;
+                const centerPos = project(targetX + 0.5, targetY + 0.5, h, viewMode, tileSize);
                 const screenCX = centerPos.x - camera.x;
                 const screenCY = centerPos.y - camera.y;
 
@@ -102,10 +103,10 @@ function renderTargetHighlights(ctx, players, camera, tileSize, settings) {
                 ) {
                     ctx.strokeStyle = indicatorColor;
                     ctx.beginPath();
-                    ctx.moveTo(screenCX + halfWidth, screenCY);          // Right
-                    ctx.lineTo(screenCX,            screenCY + halfHeight); // Bottom
-                    ctx.lineTo(screenCX - halfWidth, screenCY);          // Left
-                    ctx.lineTo(screenCX,            screenCY - halfHeight); // Top
+                    ctx.moveTo(screenCX + halfWidth,  screenCY);            // Right
+                    ctx.lineTo(screenCX,             screenCY + halfHeight); // Bottom
+                    ctx.lineTo(screenCX - halfWidth, screenCY);              // Left
+                    ctx.lineTo(screenCX,             screenCY - halfHeight); // Top
                     ctx.closePath();
                     ctx.stroke();
                 }
@@ -355,7 +356,7 @@ export function renderGame(game) {
     
     map.renderBase(ctx, camera.x, camera.y, drawStartX, drawEndX, drawStartY, drawEndY, viewMode);
 
-    renderTargetHighlights(ctx, players, camera, tileSize, settings);
+    renderTargetHighlights(ctx, players, camera, tileSize, settings, map);
 
     renderYSorted(ctx, players, map, drawStartX, drawEndX, drawStartY, drawEndY, tileSize, camera, settings);
 
