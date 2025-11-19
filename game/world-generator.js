@@ -59,7 +59,7 @@ export async function regenerateMapFeature(channel, worldName, feature, settings
 
 export function generateTerrain(map, settings) {
     console.log("Generating terrain with settings:", settings);
-    const seed = settings.seed || Math.random();
+    let seed = settings.seed || Math.random();
     const noise2D = createNoise2D(() => {
         // Simple seeded random. Not perfect but sufficient.
         const x = Math.sin(seed++) * 10000;
